@@ -8,10 +8,11 @@ Pure Python 3.13 standard library only: no Pillow, no network, no random
 numbers. The PNG encoder is written by hand (zlib + struct) and every
 shape is drawn into an RGB buffer with small scanline helpers.
 
-The place: VELMARA, a white-cliff city above a violet sea, under two
-suns — one large and golden, one small and rose-red. A single sailboat
-crosses the calm teal water. The only text in the picture is the name
-of the place itself.
+The place: VELMARA, a terracotta-cliff city above a violet sea, under two
+suns — one large and golden, one small and rose-red. A small fleet of
+sailboats crosses the calm teal water, guided down to the harbour by the
+lighthouse beam falling onto the waves. The only text in the picture is
+the name of the place itself.
 """
 
 import math
@@ -32,8 +33,8 @@ TEXT_CREAM = (255, 246, 224)
 TEXT_SHADOW = (22, 30, 66)
 TEAL_DEEP = (16, 70, 100)
 TEAL = (30, 122, 140)
-CLIFF = (238, 230, 210)
-CLIFF_SHADE = (208, 196, 170)
+CLIFF = (192, 138, 78)
+CLIFF_SHADE = (169, 113, 63)
 TERRA = (198, 102, 60)
 WINDOW = (255, 196, 90)
 DARK = (40, 50, 80)
@@ -316,11 +317,29 @@ def paint_lighthouse():
     fill_rect(x + 6, top + 6, x + w - 7, top + 14, WINDOW)
     fill_polygon([(x - 1, top + 2), (x + w + 1, top + 2),
                   (x + w // 2, top - 12)], TERRA)
-    # A soft beam sweeping out to sea, above the poster name.
-    fill_polygon_alpha([(x + w // 2, top + 10), (760, 296), (760, 344)],
-                       (255, 232, 170), 0.15)
-    fill_polygon_alpha([(x + w // 2, top + 10), (700, 318), (700, 342)],
-                       (255, 240, 190), 0.22)
+    # The beam is painted separately (paint_beam), after the fleet, so it
+    # falls down onto the water and the ships instead of sweeping
+    # sideways across the sky.
+
+
+def paint_beam():
+    """A cone of light falling DOWN from the lamp onto the water, so the
+    ships crossing below the cliff can see the rocks and keep clear of
+    each other. The cone stays left of the poster's name."""
+    lx, ly = 193, 402
+    # Wide outer cone, then a narrower brighter core, both aimed at the
+    # water just left of the cliff's foot.
+    fill_polygon_alpha([(lx, ly), (24, 858), (216, 888)],
+                       (255, 232, 170), 0.22)
+    fill_polygon_alpha([(lx, ly), (64, 854), (196, 880)],
+                       (255, 240, 190), 0.32)
+    # Bright pool where the light lands on the water, smoothed over
+    # several steps so no hard rings show.
+    for glow_r, alpha in ((70, 0.06), (56, 0.08), (42, 0.10), (28, 0.14),
+                          (14, 0.20)):
+        fill_circle_alpha(128, 862, glow_r, (255, 222, 150), alpha)
+    for dx in range(-60, 61, 4):
+        blend(128 + dx, 862, (255, 232, 170), 0.12)
 
 
 # -------------------------------------------------------------------- sea
@@ -349,23 +368,35 @@ def paint_sea_glitter():
                 blend(x, y, (120, 190, 200), 0.15)
 
 
-def paint_sailboat():
-    bx, by = 640, 836
+def paint_sailboat(bx, by, s=1.0):
+    """One sailboat at (bx, by), scaled by s (1.0 = hero boat)."""
     # Hull.
-    fill_polygon([(bx - 34, by), (bx + 34, by), (bx + 22, by + 16),
-                  (bx - 22, by + 16)], (52, 44, 66))
+    fill_polygon([(bx - int(34 * s), by), (bx + int(34 * s), by),
+                  (bx + int(22 * s), by + int(16 * s)),
+                  (bx - int(22 * s), by + int(16 * s))], (52, 44, 66))
     # Mast and two white sails.
-    draw_line(bx, by - 2, bx, by - 66, (52, 44, 66))
-    fill_polygon([(bx + 3, by - 64), (bx + 3, by - 4), (bx + 40, by - 4)],
-                 (250, 246, 236))
-    fill_polygon([(bx - 3, by - 56), (bx - 3, by - 4), (bx - 30, by - 4)],
-                 (238, 230, 214))
+    draw_line(bx, by - 2, bx, by - int(66 * s), (52, 44, 66))
+    fill_polygon([(bx + int(3 * s), by - int(64 * s)),
+                  (bx + int(3 * s), by - int(4 * s)),
+                  (bx + int(40 * s), by - int(4 * s))], (250, 246, 236))
+    fill_polygon([(bx - int(3 * s), by - int(56 * s)),
+                  (bx - int(3 * s), by - int(4 * s)),
+                  (bx - int(30 * s), by - int(4 * s))], (238, 230, 214))
     # Soft reflection on the water.
-    for dy in range(1, 26):
-        alpha = 0.16 * (1.0 - dy / 26.0)
-        half = int(30 * (1.0 - dy / 30.0))
+    for dy in range(1, int(26 * s) + 1):
+        alpha = 0.16 * (1.0 - dy / (26.0 * s))
+        half = int(30 * s * (1.0 - dy / (30.0 * s)))
         for x in range(bx - half, bx + half + 1):
-            blend(x, by + 18 + dy, (250, 246, 236), alpha)
+            blend(x, by + int(18 * s) + dy, (250, 246, 236), alpha)
+
+
+def paint_fleet():
+    """A small fleet crossing the sea: the hero boat plus six more at
+    varied distances, all clear of the poster's name above the horizon."""
+    for (bx, by, s) in ((640, 836, 1.0), (300, 900, 0.8), (860, 760, 0.55),
+                        (480, 745, 0.42), (950, 920, 0.7), (230, 880, 0.65),
+                        (760, 950, 0.9)):
+        paint_sailboat(bx, by, s)
 
 
 # -------------------------------------------------------------------- type
@@ -461,7 +492,8 @@ def main():
     paint_cliff()
     paint_city()
     paint_sea_glitter()
-    paint_sailboat()
+    paint_fleet()
+    paint_beam()
     paint_name()
     paint_frame()
     if os.path.isdir("/output"):
