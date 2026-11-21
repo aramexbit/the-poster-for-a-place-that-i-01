@@ -1,0 +1,22 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Local render output (the grader writes /output/entry.png itself)
+output/
+entry.png
+*.log
+
+# Submission bundle (built later by a separate agent, never committed)
+transcripts.tar.gz
+
+# Editors and OS artefacts
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Virtual environments
+.venv/
+venv/
